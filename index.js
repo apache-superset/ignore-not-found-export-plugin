@@ -1,34 +1,50 @@
-const ModuleDependencyWarning = require('webpack/lib/ModuleDependencyWarning')
+const fs = require('fs')
+const path = require('path')
 
-// ↓ Based on https://github.com/sindresorhus/escape-string-regexp
-const escapeStringForRegExp = string => string.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
+const WHITELIST_INTERFACES = [
+  'BuildQueryFunction',
+  'ChartClientConfig',
+  'ChartMetadataConfig',
+  'ChartPluginConfig',
+  'ChartPropsConfig',
+  'ColorSchemeConfig',
+  'FormData',
+  'PresetConfig',
+  'QueryContext',
+  'RegistryConfig',
+  'RegistryWithDefaultKeyConfig',
+  'SequentialSchemeConfig',
+  'SupersetClientInterface',
+  'TransformPropsFunction',
+  'TranslatorConfig',
+]
 
-module.exports = class IgnoreNotFoundExportPlugin {
-  constructor(exportsToIgnore) {
-    this.exportsToIgnore = exportsToIgnore || []
-  }
+const PATTERN = new RegExp(`export.+'(${WHITELIST_INTERFACES.join('|')})'.+was not found`, 'i')
 
-  getMessageRegExp() {
-    const exportsPattern = `(${this.exportsToIgnore.map(escapeStringForRegExp).join('|')})`
-
-    return new RegExp(`export '${exportsPattern}'(.+?)was not found in (.+)`)
+module.exports = class IgnoreSupersetExportNotFoundWebpackPlugin {
+  constructor(isDebugMode) {
+    this.isDebugMode = isDebugMode || false
   }
 
   apply(compiler) {
-    const messageRegExp = this.getMessageRegExp()
-
     const doneHook = (stats) => {
+      const lines = []
       // eslint-disable-next-line no-param-reassign
-      stats.compilation.warnings = stats.compilation.warnings.filter(
-        warn => !(
-          warn instanceof ModuleDependencyWarning
-            && messageRegExp.test(warn.message)
-        ),
-      )
+      stats.compilation.warnings = stats.compilation.warnings
+        .filter((warn) => {
+          if (warn.message) {
+            lines.push(JSON.stringify(warn.message))
+            return !PATTERN.test(warn.message)
+          }
+          return true
+        })
+      if (this.isDebugMode) {
+        fs.writeFileSync(path.join(__dirname, 'messages.log'), lines.join('\n'))
+      }
     }
 
     if (compiler.hooks) {
-      compiler.hooks.done.tap('IgnoreNotFoundExportPlugin', doneHook)
+      compiler.hooks.done.tap('IgnoreSupersetExportNotFoundWebpackPlugin', doneHook)
     } else {
       compiler.plugin('done', doneHook)
     }
