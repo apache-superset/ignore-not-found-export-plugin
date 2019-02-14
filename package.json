@@ -1,6 +1,6 @@
 {
   "name": "@superset-ui/ignore-superset-export-not-found-webpack-plugin",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Webpack plugin for supressing warnings for superset exported interfaces",
   "main": "index.js",
   "repository": "git@github.com:apache-superset/ignore-superset-export-not-found-webpack-plugin.git",
